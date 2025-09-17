@@ -31,3 +31,12 @@ class User(UserBase, table=True):
     def check_password(self, password: str) -> bool:
         """Check if the provided password matches the hashed password"""
         return self.password == hashlib.sha256(password.encode()).hexdigest()
+
+
+class PasswordResetToken(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id")
+    token: str = Field(unique=True, index=True)
+    expires_at: datetime
+    used: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

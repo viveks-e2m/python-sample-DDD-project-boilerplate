@@ -13,7 +13,6 @@ SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-security = HTTPBearer()
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """
@@ -88,84 +87,5 @@ async def get_current_user_from_cookie(request: Request, session: SessionDep) ->
     # Retrieve user from database
     statement = select(User).where(User.username == username, User.is_active == True)
     user = session.exec(statement).first()
-    
-    return user
-
-async def get_current_user(
-    session: SessionDep,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-) -> User:
-    """
-    Get the current authenticated user from the JWT token
-    
-    Args:
-        session (SessionDep): Database session dependency
-        credentials (HTTPAuthorizationCredentials): Authorization header credentials
-        
-    Returns:
-        User: The authenticated user
-        
-    Raises:
-        HTTPException: 401 - Invalid or missing credentials
-        HTTPException: 404 - User not found
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    
-    try:
-        token = credentials.credentials
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except jwt.PyJWTError:
-        raise credentials_exception
-    
-    # Retrieve user from database
-    statement = select(User).where(User.username == username, User.is_active == True)
-    user = session.exec(statement).first()
-    
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    return user
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """
-    Verify a plain password against a hashed password
-    
-    Args:
-        plain_password (str): Plain text password
-        hashed_password (str): Hashed password
-        
-    Returns:
-        bool: True if passwords match, False otherwise
-    """
-    import hashlib
-    return hashlib.sha256(plain_password.encode()).hexdigest() == hashed_password
-
-def authenticate_user(session, username: str, password: str) -> Optional[User]:
-    """
-    Authenticate a user by username and password
-    
-    Args:
-        session: Database session
-        username (str): Username
-        password (str): Plain text password
-        
-    Returns:
-        User or None: Authenticated user or None if authentication fails
-    """
-    statement = select(User).where(User.username == username, User.is_active == True)
-    user = session.exec(statement).first()
-    
-    if not user or not verify_password(password, user.password):
-        return None
     
     return user

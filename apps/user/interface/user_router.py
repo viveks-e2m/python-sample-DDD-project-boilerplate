@@ -7,7 +7,6 @@ from fastapi import (
     Path,
     Query,
     status,
-    Request,
     Response,
 )
 from apps.user.application.schema import (
@@ -15,13 +14,12 @@ from apps.user.application.schema import (
     UserPublicModel,
     UserUpdateModel,
     UserLoginModel,
-    UserPasswordResetModel,
+    PasswordResetRequestModel,
+    PasswordResetConfirmModel,
     BaseResponse,
 )
 from apps.user.application.service import UserApplicationService
 from apps.user.utils import (
-    get_current_user,
-    get_current_user_from_cookie,
     set_auth_cookie,
     clear_auth_cookie,
     create_access_token,
@@ -29,6 +27,7 @@ from apps.user.utils import (
 from apps.user.domain.models import User
 from database import SessionDep
 from typing import List, Optional
+from apps.user.interface.dependency import get_user_service, get_authenticated_user
 
 router: APIRouter = APIRouter()
 
@@ -37,7 +36,8 @@ router: APIRouter = APIRouter()
     path="/register", response_model=BaseResponse[UserPublicModel], tags=["User"]
 )
 async def register_user(
-    user_data: UserCreateModel, session: SessionDep
+    user_data: UserCreateModel, 
+    service: UserApplicationService = Depends(get_user_service)
 ) -> BaseResponse[User]:
     """
     Register a new user.
@@ -47,6 +47,7 @@ async def register_user(
     Args:
         user_data: The data for the new user
         session: Database session dependency
+        service: User application service (dependency injected)
 
     Returns:
         BaseResponse containing the created user
@@ -57,7 +58,6 @@ async def register_user(
         HTTPException: 500 - Internal server error
     """
     try:
-        service: UserApplicationService = UserApplicationService(session)
         result: User = await service.register_user(user_data)
         return BaseResponse(
             success=True, data=result, message="User registered successfully"
@@ -73,7 +73,9 @@ async def register_user(
 
 @router.post(path="/login", response_model=BaseResponse[UserPublicModel], tags=["User"])
 async def login_user(
-    response: Response, login_data: UserLoginModel, session: SessionDep
+    response: Response, 
+    login_data: UserLoginModel,
+    service: UserApplicationService = Depends(get_user_service)
 ) -> BaseResponse[User]:
     """
     Authenticate a user.
@@ -84,6 +86,7 @@ async def login_user(
         response: FastAPI response object for setting cookies
         login_data: The login credentials
         session: Database session dependency
+        service: User application service (dependency injected)
 
     Returns:
         BaseResponse containing the authenticated user
@@ -95,7 +98,6 @@ async def login_user(
         HTTPException: 500 - Internal server error
     """
     try:
-        service: UserApplicationService = UserApplicationService(session)
         result: User = await service.login_user(login_data)
 
         # Create access token
@@ -133,33 +135,63 @@ async def logout_user(response: Response):
     return BaseResponse(success=True, message="User logged out successfully")
 
 
-@router.post(
-    path="/reset-password", response_model=BaseResponse[UserPublicModel], tags=["User"]
-)
-async def reset_password(
-    reset_data: UserPasswordResetModel, session: SessionDep, new_password: str
-) -> BaseResponse[User]:
+@router.post("/request-password-reset", tags=["User"])
+async def request_password_reset(
+    reset_data: PasswordResetRequestModel,
+    service: UserApplicationService = Depends(get_user_service)
+) -> BaseResponse[dict]:
     """
-    Reset a user's password.
+    Request a password reset.
 
-    Resets the password for a user with the provided email.
+    Sends a password reset link to the user's email.
 
     Args:
-        reset_data: The password reset data
+        reset_data: The password reset request data
         session: Database session dependency
-        new_password: The new password
+        service: User application service (dependency injected)
+
+    Returns:
+        BaseResponse indicating successful request
+
+    Raises:
+        HTTPException: 500 - Internal server error
+    """
+    try:
+        result = await service.request_password_reset(reset_data)
+        return BaseResponse(success=True, data=result, message="Password reset request processed")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}",
+        )
+
+
+@router.post("/confirm-password-reset", tags=["User"])
+async def confirm_password_reset(
+    reset_data: PasswordResetConfirmModel,
+    service: UserApplicationService = Depends(get_user_service)
+) -> BaseResponse[User]:
+    """
+    Confirm a password reset.
+
+    Updates the user's password using the provided reset token.
+
+    Args:
+        reset_data: The password reset confirmation data
+        session: Database session dependency
+        service: User application service (dependency injected)
 
     Returns:
         BaseResponse containing the user with updated password
 
     Raises:
-        HTTPException: 400 - Invalid input data
-        HTTPException: 404 - User not found
+        HTTPException: 400 - Invalid token or password
         HTTPException: 500 - Internal server error
     """
     try:
-        service: UserApplicationService = UserApplicationService(session)
-        result: User = await service.reset_password(reset_data, new_password)
+        result: User = await service.confirm_password_reset(reset_data)
         return BaseResponse(
             success=True, data=result, message="Password reset successfully"
         )
@@ -174,7 +206,7 @@ async def reset_password(
 
 @router.get(path="/me", response_model=BaseResponse[UserPublicModel], tags=["User"])
 async def get_current_user_info(
-    request: Request, session: SessionDep
+    current_user: User = Depends(get_authenticated_user)
 ) -> BaseResponse[User]:
     """
     Get the current authenticated user's information.
@@ -182,8 +214,7 @@ async def get_current_user_info(
     Retrieves information about the currently logged-in user.
 
     Args:
-        request: FastAPI request object for accessing cookies
-        session: Database session dependency
+        current_user: The authenticated user (dependency injected)
 
     Returns:
         BaseResponse containing the current user's information
@@ -193,29 +224,18 @@ async def get_current_user_info(
         HTTPException: 404 - User not found
         HTTPException: 500 - Internal server error
     """
-    try:
-        user = await get_current_user_from_cookie(request, session)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
-            )
-        return BaseResponse(
-            success=True, data=user, message="Current user retrieved successfully"
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred: {str(e)}",
-        )
+    
+    return BaseResponse(success=True, data=current_user, message="Current user retrieved successfully")
+    
 
 
 @router.get(
     path="/{user_id}", response_model=BaseResponse[UserPublicModel], tags=["User"]
 )
 async def read_user(
-    user_id: uuid.UUID, session: SessionDep, current_user: User = Depends(get_current_user)
+    user_id: uuid.UUID,
+    current_user: User = Depends(get_authenticated_user),
+    service: UserApplicationService = Depends(get_user_service)
 ) -> BaseResponse[User]:
     """
     Get a user by ID.
@@ -224,13 +244,14 @@ async def read_user(
 
     Args:
         user_id: The ID of the user to retrieve
-        session: Database session dependency
-        current_user: Currently authenticated user
+        current_user: The authenticated user (dependency injected)
+        service: User application service (dependency injected)
 
     Returns:
         BaseResponse containing the requested user
 
     Raises:
+        HTTPException: 401 - Not authenticated
         HTTPException: 403 - Insufficient permissions
         HTTPException: 404 - User not found
         HTTPException: 500 - Internal server error
@@ -243,7 +264,6 @@ async def read_user(
         )
 
     try:
-        service: UserApplicationService = UserApplicationService(session)
         result: User = await service.get_user(user_id)
         return BaseResponse(
             success=True, data=result, message="User retrieved successfully"
@@ -261,10 +281,10 @@ async def read_user(
     path="/{user_id}", response_model=BaseResponse[UserPublicModel], tags=["User"]
 )
 async def update_user(
-    user_id: int,
-    session: SessionDep,
-    current_user: User = Depends(get_current_user),
+    user_id: uuid.UUID,
+    current_user: User = Depends(get_authenticated_user),
     user_data: Optional[UserUpdateModel] = None,
+    service: UserApplicationService = Depends(get_user_service)
 ):
     """
     Update a user.
@@ -273,23 +293,30 @@ async def update_user(
 
     Args:
         user_id: The ID of the user to update
-        session: Database session dependency
-        current_user: Currently authenticated user
+        current_user: The authenticated user (dependency injected)
         user_data: The updated data for the user
+        service: User application service (dependency injected)
 
     Returns:
         BaseResponse containing the updated user
 
     Raises:
         HTTPException: 400 - Invalid input data
+        HTTPException: 401 - Not authenticated
         HTTPException: 403 - Insufficient permissions
         HTTPException: 404 - User not found
         HTTPException: 500 - Internal server error
     """
+    # Check if user has permission to update this user
+    if current_user.id != user_id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this user",
+        )
+        
     try:
-        service = UserApplicationService(session)
         result = await service.update_user(
-            user_id, user_data or UserUpdateModel(), current_user
+            user_id, user_data or UserUpdateModel()
         )
         return BaseResponse(
             success=True, data=result, message="User updated successfully"
@@ -308,8 +335,8 @@ async def update_user(
 )
 async def delete_user(
     user_id: uuid.UUID,
-    session: SessionDep,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_authenticated_user),
+    service: UserApplicationService = Depends(get_user_service)
 ) -> BaseResponse[User]:
     """
     Delete a user (soft delete).
@@ -318,20 +345,27 @@ async def delete_user(
 
     Args:
         user_id: The ID of the user to delete
-        session: Database session dependency
-        current_user: Currently authenticated user
+        current_user: The authenticated user (dependency injected)
+        service: User application service (dependency injected)
 
     Returns:
         BaseResponse containing the deleted user
 
     Raises:
+        HTTPException: 401 - Not authenticated
         HTTPException: 403 - Insufficient permissions
         HTTPException: 404 - User not found
         HTTPException: 500 - Internal server error
     """
+    # Check if user has permission to delete this user
+    if current_user.id != user_id and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this user",
+        )
+        
     try:
-        service: UserApplicationService = UserApplicationService(session)
-        result: User = await service.delete_user(user_id, current_user)
+        result: User = await service.delete_user(user_id)
         return BaseResponse(
             success=True, data=result, message="User deleted successfully"
         )

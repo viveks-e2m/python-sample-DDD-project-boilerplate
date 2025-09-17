@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from sqlmodel import select
-from apps.user.domain.models import User
+from apps.user.domain.models import User, PasswordResetToken
 from apps.user.application.schema import UserCreateModel, UserUpdateModel, UserLoginModel
 from apps.user.domain.exceptions import (
     UserNotFoundError, 
@@ -11,7 +11,7 @@ from apps.user.domain.exceptions import (
     UserAlreadyExistsError
 )
 from database import Session
-
+import secrets
 
 
 class UserDomainService:
@@ -42,11 +42,11 @@ class UserDomainService:
         
         if self.session.exec(username_check).first():
             raise UserAlreadyExistsError(f"User with username '{user_data.username}' already exists")
-        
+            
         if self.session.exec(email_check).first():
             raise UserAlreadyExistsError(f"User with email '{user_data.email}' already exists")
-        
-        # Create user
+            
+        # Create user instance
         user = User(
             username=user_data.username,
             email=user_data.email,
@@ -106,12 +106,12 @@ class UserDomainService:
             raise UserNotFoundError("User not found")
         return user
     
-    async def update_user(self, user_id: int, user_data: UserUpdateModel):
+    async def update_user(self, user_id: uuid.UUID, user_data: UserUpdateModel):
         """
         Domain layer service for updating a user
         
         Args:
-            user_id (int): The ID of the user to update
+            user_id (uuid.UUID): The ID of the user to update
             user_data (UserUpdateModel): The updated data for the user
             
         Returns:
@@ -153,7 +153,7 @@ class UserDomainService:
         Domain layer service for deleting a user (soft delete)
         
         Args:
-            user_id (int): The ID of the user to delete
+            user_id (uuid.UUID): The ID of the user to delete
             
         Returns:
             User: The deleted user
@@ -227,5 +227,120 @@ class UserDomainService:
         self.session.add(user)
         self.session.commit()
         self.session.refresh(user)
+        
+        return user
+    
+    async def create_password_reset_token(self, email: str) -> PasswordResetToken:
+        """
+        Domain layer service for creating a password reset token
+        
+        Args:
+            email (str): The email of the user requesting password reset
+            
+        Returns:
+            PasswordResetToken: The created password reset token
+            
+        Raises:
+            UserNotFoundError: If the user is not found
+        """
+        # Find the user by email
+        statement = select(User).where(User.email == email, User.is_active == True)
+        user = self.session.exec(statement).first()
+        
+        if not user:
+            raise UserNotFoundError("User not found")
+        
+        # Invalidate any existing tokens for this user
+        existing_tokens_statement = select(PasswordResetToken).where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used == False
+        )
+        existing_tokens = self.session.exec(existing_tokens_statement).all()
+        for token in existing_tokens:
+            token.used = True
+            self.session.add(token)
+        
+        # Create a new reset token
+        token_value = secrets.token_urlsafe(32)
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)  # 30-minute expiration
+        
+        reset_token = PasswordResetToken(
+            user_id=user.id,
+            token=token_value,
+            expires_at=expires_at,
+            used=False,
+            created_at=datetime.now(timezone.utc)
+        )
+        
+        self.session.add(reset_token)
+        self.session.commit()
+        self.session.refresh(reset_token)
+        
+        return reset_token
+    
+    async def validate_password_reset_token(self, token: str) -> PasswordResetToken:
+        """
+        Domain layer service for validating a password reset token
+        
+        Args:
+            token (str): The token to validate
+            
+        Returns:
+            PasswordResetToken: The validated password reset token
+            
+        Raises:
+            UserNotFoundError: If the token is invalid, expired, or already used
+        """
+        statement = select(PasswordResetToken).where(PasswordResetToken.token == token)
+        reset_token = self.session.exec(statement).first()
+        
+        if not reset_token:
+            raise UserNotFoundError("Invalid reset token")
+            
+        if reset_token.used:
+            raise UserNotFoundError("Reset token has already been used")
+            
+        if reset_token.expires_at < datetime.now(timezone.utc):
+            raise UserNotFoundError("Reset token has expired")
+        
+        return reset_token
+    
+    async def complete_password_reset(self, token: str, new_password: str) -> User:
+        """
+        Domain layer service for completing a password reset
+        
+        Args:
+            token (str): The reset token
+            new_password (str): The new password
+            
+        Returns:
+            User: The user with the updated password
+            
+        Raises:
+            UserNotFoundError: If the token is invalid, expired, or already used
+        """
+        # Validate the token
+        reset_token = await self.validate_password_reset_token(token)
+        
+        # Get the user
+        statement = select(User).where(User.id == reset_token.user_id, User.is_active == True)
+        user = self.session.exec(statement).first()
+        
+        if not user:
+            raise UserNotFoundError("User not found")
+        
+        # Update the user's password
+        user.set_password(new_password)
+        user.updated_at = datetime.now(timezone.utc)
+        
+        # Mark the token as used
+        reset_token.used = True
+        
+        # Save changes
+        self.session.add(user)
+        self.session.add(reset_token)
+        self.session.commit()
+        self.session.refresh(user)
+        self.session.refresh(reset_token)
         
         return user
