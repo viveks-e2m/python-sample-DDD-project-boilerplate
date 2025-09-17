@@ -7,9 +7,6 @@ from apps.demo.domain.exceptions import DemoItemNotFoundError, DemoItemPermissio
 from apps.demo.application.schemas import DemoCreateModel, DemoUpdateModel
 from apps.demo.utils import validate_demo_priority
 from database import SessionDep
-from apps.user.domain.models import Users
-from apps.user.domain.service import get_current_user
-
 
 class DemoItemApplicationService:
     """
