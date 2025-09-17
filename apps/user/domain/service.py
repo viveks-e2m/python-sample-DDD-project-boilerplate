@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timezone
 from sqlmodel import select
 from apps.user.domain.models import User
@@ -10,7 +11,7 @@ from apps.user.domain.exceptions import (
     UserAlreadyExistsError
 )
 from database import Session
-import hashlib
+
 
 
 class UserDomainService:
@@ -67,12 +68,12 @@ class UserDomainService:
         
         return user
     
-    async def get_user(self, user_id: int):
+    async def get_user(self, user_id: uuid.UUID):
         """
         Domain layer service for retrieving a user
         
         Args:
-            user_id (int): The ID of the user to retrieve
+            user_id (uuid.UUID): The ID of the user to retrieve
             
         Returns:
             User: The requested user
@@ -147,7 +148,7 @@ class UserDomainService:
         
         return user
     
-    async def delete_user(self, user_id: int):
+    async def delete_user(self, user_id: uuid.UUID):
         """
         Domain layer service for deleting a user (soft delete)
         
@@ -189,7 +190,7 @@ class UserDomainService:
             UserNotFoundError: If the user is not found
             UserAuthenticationError: If the password is incorrect
         """
-        statement = select(User).where(User.username == login_data.username, User.is_active == True)
+        statement = select(User).where(User.email == login_data.email, User.is_active == True)
         user = self.session.exec(statement).first()
         
         if not user:

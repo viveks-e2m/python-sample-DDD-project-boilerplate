@@ -1,4 +1,5 @@
 from typing import Any, Optional
+import uuid
 from fastapi import Depends, HTTPException, status
 from sqlmodel import select
 from apps.user.domain.models import User
@@ -61,7 +62,7 @@ class UserApplicationService:
                 detail=f"Failed to create user: {str(e)}"
             )
 
-    async def get_user(self, user_id: int):
+    async def get_user(self, user_id: uuid.UUID):
         """
         Application layer service for retrieving a user
 
@@ -117,12 +118,12 @@ class UserApplicationService:
                 detail=str(e)
             )
 
-    async def delete_user(self, user_id: int, current_user: User = Depends(get_current_user)):
+    async def delete_user(self, user_id: uuid.UUID, current_user: User = Depends(get_current_user)):
         """
         Application layer service for deleting a user
 
         Args:
-            user_id (int): The ID of the user to delete
+            user_id (uuid.UUID): The ID of the user to delete
             current_user (User): The currently authenticated user
 
         Returns:
@@ -187,21 +188,6 @@ class UserApplicationService:
             HTTPException: 400 - Invalid input data
             HTTPException: 404 - User not found
         """
-        # Validate new password
-        try:
-            # Create a temporary UserCreateModel to validate the password
-            temp_user_data = UserCreateModel(
-                username="temp",
-                email=reset_data.email,
-                password=new_password,
-                first_name="temp",
-                last_name="temp"
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid password: {str(e)}"
-            )
 
         try:
             return await self.domain_service.reset_password(reset_data.email, new_password)

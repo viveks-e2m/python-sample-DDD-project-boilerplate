@@ -215,7 +215,7 @@ async def get_current_user_info(
     path="/{user_id}", response_model=BaseResponse[UserPublicModel], tags=["User"]
 )
 async def read_user(
-    user_id: int, session: SessionDep, current_user: User = Depends(get_current_user)
+    user_id: uuid.UUID, session: SessionDep, current_user: User = Depends(get_current_user)
 ) -> BaseResponse[User]:
     """
     Get a user by ID.

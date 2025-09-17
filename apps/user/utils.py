@@ -78,6 +78,7 @@ async def get_current_user_from_cookie(request: Request, session: SessionDep) ->
         
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        print(payload)
         username: str = payload.get("sub")
         if username is None:
             return None
