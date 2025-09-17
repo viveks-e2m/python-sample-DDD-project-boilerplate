@@ -2,7 +2,7 @@ import os
 from sqlalchemy.ext.declarative import declarative_base
 from fastapi import Depends
 from sqlmodel import Field, Session, SQLModel, create_engine, select
-from typing import Annotated
+from typing import Annotated, TypeAlias
 import config
 
 # Database configuration
@@ -11,7 +11,7 @@ if os.getenv("ENVIRONMENT") == "production":
     database_url = config.DATABASE_URL
 else:
     # Default to SQLite for local development
-    sqlite_file_name = "blogpost_database.db"
+    sqlite_file_name = "database.db"
     sqlite_url = f"sqlite:///./{sqlite_file_name}"
     database_url = os.getenv("DATABASE_URL", sqlite_url)
 
@@ -31,6 +31,3 @@ def get_session():
         yield session
      
 SessionDep = Annotated[Session, Depends(get_session)]
-
-# For backward compatibility
-base = declarative_base()
