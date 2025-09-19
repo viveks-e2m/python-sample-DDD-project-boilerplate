@@ -105,12 +105,13 @@ class UserApplicationService:
                 detail=f"Failed to list users: {str(e)}"
             )
 
-    async def update_user(self, user_data: UserUpdateModel,current_user:User,):
+    async def update_user(self, user_id: uuid.UUID, current_user: User, user_data: UserUpdateModel):
         """
         Application layer service for updating a user
 
         Args:
             user_id (uuid.UUID): The ID of the user to update
+            current_user (User): The authenticated user making the request
             user_data (UserUpdateModel): The updated data for the user
 
         Returns:
@@ -118,17 +119,18 @@ class UserApplicationService:
 
         Raises:
             HTTPException: 400 - Invalid input data
+            HTTPException: 403 - Insufficient permissions
             HTTPException: 404 - User not found
         """
         # Check if user has permission to update this user
-        if current_user.email != user_data.email and not current_user.is_superuser:
+        if current_user.id != user_id and not current_user.is_superuser:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to update this user",
             )
             
         try:
-            return await self.domain_service.update_user(current_user, user_data)
+            return await self.domain_service.update_user(user_id, user_data)
         except UserNotFoundError:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"

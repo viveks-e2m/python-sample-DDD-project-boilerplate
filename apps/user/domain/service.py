@@ -107,7 +107,7 @@ class UserDomainService:
             raise UserNotFoundError("User not found")
         return user
     
-    async def update_user(self, current_user: User, user_data: UserUpdateModel):
+    async def update_user(self, user_id: uuid.UUID, user_data: UserUpdateModel):
         """
         Domain layer service for updating a user
         
@@ -121,19 +121,11 @@ class UserDomainService:
         Raises:
             UserNotFoundError: If the user is not found
         """
-        statement = select(User).where(User.id == current_user.id, User.is_active == True)
+        statement = select(User).where(User.id == user_id, User.is_active == True)
         user = self.session.exec(statement).first()
         
         if not user:
             raise UserNotFoundError("User not found")
-            
-        # Update only provided fields
-        if user_data.email is not None:
-            # Check if email is already taken by another user
-            email_check = select(User).where(User.email == user_data.email, User.id != current_user.id)
-            if self.session.exec(email_check).first():
-                raise UserValidationError("Email is already taken by another user")
-            user.email = user_data.email
             
         if user_data.first_name is not None:
             user.first_name = user_data.first_name

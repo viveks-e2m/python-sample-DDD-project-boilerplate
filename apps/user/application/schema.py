@@ -69,7 +69,7 @@ class UserCreateModel(UserBase, PasswordValidatorMixin):
 
 
 class UserUpdateModel(SQLModel, NameValidatorMixin):
-    email: Optional[EmailStr] = Field(default=None)
+    # email: Optional[EmailStr] = Field(default=None)
     first_name: Optional[str] = Field(default=None, max_length=50)
     last_name: Optional[str] = Field(default=None, max_length=50)
 
