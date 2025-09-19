@@ -4,6 +4,8 @@ from fastapi import Depends
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from typing import Annotated, TypeAlias
 import config
+from apps.user.domain.models import User, PasswordResetToken
+from apps.user.domain.auth_models import TwoFactorAuth, UserSession, OAuthAccount
 
 # Database configuration
 # Use PostgreSQL in production, SQLite for local development
