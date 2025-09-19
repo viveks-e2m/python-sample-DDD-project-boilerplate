@@ -1,3 +1,4 @@
+import email
 import uuid
 import hashlib
 from typing import Optional, Generic, TypeVar
@@ -14,6 +15,8 @@ class BaseResponse(BaseModel, Generic[T]):
     success: bool
     message: str
     data: Optional[T] = None
+    status_code: Optional[int] = None
+    error_details: Optional[object] = None
 
 
 # -------------------------
@@ -66,7 +69,7 @@ class UserCreateModel(UserBase, PasswordValidatorMixin):
 
 
 class UserUpdateModel(SQLModel, NameValidatorMixin):
-    email: Optional[EmailStr] = Field(default=None, max_length=100)
+    email: Optional[EmailStr] = Field(default=None)
     first_name: Optional[str] = Field(default=None, max_length=50)
     last_name: Optional[str] = Field(default=None, max_length=50)
 

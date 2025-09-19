@@ -60,10 +60,10 @@ async def register_user(
     try:
         result: User = await service.register_user(user_data)
         return BaseResponse(
-            success=True, data=result, message="User registered successfully"
+            success=True, data=result, message="User registered successfully", status_code=status.HTTP_201_CREATED
         )
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -107,10 +107,10 @@ async def login_user(
         set_auth_cookie(response, access_token)
 
         return BaseResponse(
-            success=True, data=result, message="User logged in successfully"
+            success=True, data=result, message="User logged in successfully", status_code=status.HTTP_200_OK
         )
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -132,7 +132,7 @@ async def logout_user(response: Response):
         BaseResponse indicating successful logout
     """
     clear_auth_cookie(response)
-    return BaseResponse(success=True, message="User logged out successfully")
+    return BaseResponse(success=True, message="User logged out successfully",status_code=status.HTTP_200_OK)
 
 
 @router.post("/request-password-reset", tags=["User"])
@@ -159,8 +159,8 @@ async def request_password_reset(
     try:
         result = await service.request_password_reset(reset_data)
         return BaseResponse(success=True, data=result, message="Password reset request processed")
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -193,14 +193,15 @@ async def confirm_password_reset(
     try:
         result: User = await service.confirm_password_reset(reset_data)
         return BaseResponse(
-            success=True, data=result, message="Password reset successfully"
+            success=True, data=result, message="Password reset successfully", status_code=status.HTTP_200_OK
         )
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred: {str(e)}",
+
         )
 
 
@@ -225,7 +226,7 @@ async def get_current_user_info(
         HTTPException: 500 - Internal server error
     """
     
-    return BaseResponse(success=True, data=current_user, message="Current user retrieved successfully")
+    return BaseResponse(success=True, data=current_user, message="Current user retrieved successfully", status_code=status.HTTP_200_OK)
     
 
 
@@ -266,10 +267,10 @@ async def read_user(
     try:
         result: User = await service.get_user(user_id)
         return BaseResponse(
-            success=True, data=result, message="User retrieved successfully"
+            success=True, data=result, message="User retrieved successfully", status_code=status.HTTP_200_OK
         )
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -281,9 +282,8 @@ async def read_user(
     path="/{user_id}", response_model=BaseResponse[UserPublicModel], tags=["User"]
 )
 async def update_user(
-    user_id: uuid.UUID,
+    user_data: UserUpdateModel,
     current_user: User = Depends(get_authenticated_user),
-    user_data: Optional[UserUpdateModel] = None,
     service: UserApplicationService = Depends(get_user_service)
 ):
     """
@@ -307,22 +307,14 @@ async def update_user(
         HTTPException: 404 - User not found
         HTTPException: 500 - Internal server error
     """
-    # Check if user has permission to update this user
-    if current_user.id != user_id and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to update this user",
-        )
         
     try:
-        result = await service.update_user(
-            user_id, user_data or UserUpdateModel()
-        )
+        result = await service.update_user(user_data,current_user)
         return BaseResponse(
-            success=True, data=result, message="User updated successfully"
+            success=True, data=result, message="User updated successfully", status_code=status.HTTP_200_OK
         )
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -367,10 +359,10 @@ async def delete_user(
     try:
         result: User = await service.delete_user(user_id)
         return BaseResponse(
-            success=True, data=result, message="User deleted successfully"
+            success=True, data=result, message="User deleted successfully", status_code=status.HTTP_200_OK
         )
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

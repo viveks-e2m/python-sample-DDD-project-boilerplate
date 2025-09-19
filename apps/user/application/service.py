@@ -82,7 +82,30 @@ class UserApplicationService:
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
 
-    async def update_user(self, user_id: uuid.UUID, user_data: UserUpdateModel):
+    async def list_users(self, skip: int, limit: int, active_only: bool):
+        """
+        Application layer service for listing users with pagination and filtering
+
+        Args:
+            skip (int): Number of users to skip (for pagination)
+            limit (int): Maximum number of users to return (for pagination)
+            active_only (bool): Filter to show only active users
+
+        Returns:
+            List[User]: List of users
+
+        Raises:
+            HTTPException: 500 - Internal server error
+        """
+        try:
+            return await self.domain_service.list_users(skip, limit, active_only)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to list users: {str(e)}"
+            )
+
+    async def update_user(self, user_data: UserUpdateModel,current_user:User,):
         """
         Application layer service for updating a user
 
@@ -97,8 +120,42 @@ class UserApplicationService:
             HTTPException: 400 - Invalid input data
             HTTPException: 404 - User not found
         """
+        # Check if user has permission to update this user
+        if current_user.email != user_data.email and not current_user.is_superuser:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to update this user",
+            )
+            
         try:
-            return await self.domain_service.update_user(user_id, user_data)
+            return await self.domain_service.update_user(current_user, user_data)
+        except UserNotFoundError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
+        except UserValidationError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+
+    async def admin_update_user(self, user_id: uuid.UUID, user_data: UserUpdateModel):
+        """
+        Application layer service for admin updating a user
+
+        Args:
+            user_id (uuid.UUID): The ID of the user to update
+            user_data (UserUpdateModel): The updated data for the user
+
+        Returns:
+            User: The updated user
+
+        Raises:
+            HTTPException: 400 - Invalid input data
+            HTTPException: 404 - User not found
+        """
+        try:
+            return await self.domain_service.admin_update_user(user_id, user_data)
         except UserNotFoundError:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
@@ -215,4 +272,26 @@ class UserApplicationService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to reset password: {str(e)}"
+            )
+
+    async def update_user_status(self, user_id: uuid.UUID, is_active: bool, is_superuser: Optional[bool] = None):
+        """
+        Application layer service for updating a user's status
+
+        Args:
+            user_id (uuid.UUID): The ID of the user to update
+            is_active (bool): Whether the user should be active
+            is_superuser (Optional[bool]): Whether the user should be a superuser
+
+        Returns:
+            User: The updated user
+
+        Raises:
+            HTTPException: 404 - User not found
+        """
+        try:
+            return await self.domain_service.update_user_status(user_id, is_active, is_superuser)
+        except UserNotFoundError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )

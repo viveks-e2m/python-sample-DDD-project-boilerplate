@@ -11,6 +11,7 @@ from apps.user.domain.exceptions import (
     UserAlreadyExistsError
 )
 from database import Session
+from typing import Optional
 import secrets
 
 
@@ -106,7 +107,7 @@ class UserDomainService:
             raise UserNotFoundError("User not found")
         return user
     
-    async def update_user(self, user_id: uuid.UUID, user_data: UserUpdateModel):
+    async def update_user(self, current_user: User, user_data: UserUpdateModel):
         """
         Domain layer service for updating a user
         
@@ -120,7 +121,7 @@ class UserDomainService:
         Raises:
             UserNotFoundError: If the user is not found
         """
-        statement = select(User).where(User.id == user_id, User.is_active == True)
+        statement = select(User).where(User.id == current_user.id, User.is_active == True)
         user = self.session.exec(statement).first()
         
         if not user:
@@ -129,7 +130,7 @@ class UserDomainService:
         # Update only provided fields
         if user_data.email is not None:
             # Check if email is already taken by another user
-            email_check = select(User).where(User.email == user_data.email, User.id != user_id)
+            email_check = select(User).where(User.email == user_data.email, User.id != current_user.id)
             if self.session.exec(email_check).first():
                 raise UserValidationError("Email is already taken by another user")
             user.email = user_data.email
@@ -300,7 +301,15 @@ class UserDomainService:
         if reset_token.used:
             raise UserNotFoundError("Reset token has already been used")
             
-        if reset_token.expires_at < datetime.now(timezone.utc):
+        # Ensure both datetimes are timezone-aware for comparison
+        expires_at = reset_token.expires_at
+        if expires_at.tzinfo is None:
+            # If expires_at is naive, assume it's UTC
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+            
+        now = datetime.now(timezone.utc)
+        
+        if expires_at < now:
             raise UserNotFoundError("Reset token has expired")
         
         return reset_token
@@ -342,5 +351,103 @@ class UserDomainService:
         self.session.commit()
         self.session.refresh(user)
         self.session.refresh(reset_token)
+        
+        return user
+    
+    async def list_users(self, skip: int, limit: int, active_only: bool):
+        """
+        Domain layer service for listing users with pagination and filtering
+        
+        Args:
+            skip (int): Number of users to skip (for pagination)
+            limit (int): Maximum number of users to return (for pagination)
+            active_only (bool): Filter to show only active users
+            
+        Returns:
+            List[User]: List of users
+        """
+        statement = select(User)
+        
+        if active_only:
+            statement = statement.where(User.is_active == True)
+            
+        statement = statement.offset(skip).limit(limit)
+        
+        users = self.session.exec(statement).all()
+        return users
+
+    async def admin_update_user(self, user_id: uuid.UUID, user_data: UserUpdateModel):
+        """
+        Domain layer service for admin updating a user
+        
+        Args:
+            user_id (uuid.UUID): The ID of the user to update
+            user_data (UserUpdateModel): The updated data for the user
+            
+        Returns:
+            User: The updated user
+            
+        Raises:
+            UserNotFoundError: If the user is not found
+        """
+        statement = select(User).where(User.id == user_id)
+        user = self.session.exec(statement).first()
+        
+        if not user:
+            raise UserNotFoundError("User not found")
+            
+        # Update only provided fields
+        if user_data.email is not None:
+            # Check if email is already taken by another user
+            email_check = select(User).where(User.email == user_data.email, User.id != user_id)
+            if self.session.exec(email_check).first():
+                raise UserValidationError("Email is already taken by another user")
+            user.email = user_data.email
+            
+        if user_data.first_name is not None:
+            user.first_name = user_data.first_name
+            
+        if user_data.last_name is not None:
+            user.last_name = user_data.last_name
+            
+        user.updated_at = datetime.now(timezone.utc)
+        
+        self.session.add(user)
+        self.session.commit()
+        self.session.refresh(user)
+        
+        return user
+
+    async def update_user_status(self, user_id: uuid.UUID, is_active: bool, is_superuser: Optional[bool] = None):
+        """
+        Domain layer service for updating a user's status
+        
+        Args:
+            user_id (uuid.UUID): The ID of the user to update
+            is_active (bool): Whether the user should be active
+            is_superuser (Optional[bool]): Whether the user should be a superuser
+            
+        Returns:
+            User: The updated user
+            
+        Raises:
+            UserNotFoundError: If the user is not found
+        """
+        statement = select(User).where(User.id == user_id)
+        user = self.session.exec(statement).first()
+        
+        if not user:
+            raise UserNotFoundError("User not found")
+            
+        user.is_active = is_active
+        
+        if is_superuser is not None:
+            user.is_superuser = is_superuser
+            
+        user.updated_at = datetime.now(timezone.utc)
+        
+        self.session.add(user)
+        self.session.commit()
+        self.session.refresh(user)
         
         return user
