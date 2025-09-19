@@ -388,14 +388,6 @@ class UserDomainService:
         if not user:
             raise UserNotFoundError("User not found")
             
-        # Update only provided fields
-        if user_data.email is not None:
-            # Check if email is already taken by another user
-            email_check = select(User).where(User.email == user_data.email, User.id != user_id)
-            if self.session.exec(email_check).first():
-                raise UserValidationError("Email is already taken by another user")
-            user.email = user_data.email
-            
         if user_data.first_name is not None:
             user.first_name = user_data.first_name
             
