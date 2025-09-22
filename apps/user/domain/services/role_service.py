@@ -1,4 +1,5 @@
 import uuid
+from uuid import UUID
 from typing import List, Optional
 from sqlmodel import select, col
 from apps.user.domain.models.auth_models import Role, Permission, RolePermission
@@ -32,8 +33,14 @@ class RoleService:
         if not user.role_id:
             return None
             
+        # Get the role - ensure we're working with a proper UUID object
+        from uuid import UUID
+        role_id = user.role_id if isinstance(user.role_id, UUID) else UUID(user.role_id) if user.role_id else None
+        if not role_id:
+            return None
+            
         # Get the role from database
-        return self.session.get(Role, user.role_id)
+        return self.session.get(Role, role_id)
 
     def get_user_permissions(self, user: User) -> List[Permission]:
         """
@@ -55,8 +62,13 @@ class RoleService:
         if not user.role_id:
             return []
             
-        # Get the role
-        role = self.session.get(Role, user.role_id)
+        # Get the role - ensure we're working with a proper UUID object
+        from uuid import UUID
+        role_id = user.role_id if isinstance(user.role_id, UUID) else UUID(user.role_id) if user.role_id else None
+        if not role_id:
+            return []
+            
+        role = self.session.get(Role, role_id)
         if not role:
             return []
             
@@ -87,8 +99,13 @@ class RoleService:
         if not user.role_id:
             return False
             
-        # Get the role from database
-        role = self.session.get(Role, user.role_id)
+        # Get the role - ensure we're working with a proper UUID object
+        from uuid import UUID
+        role_id = user.role_id if isinstance(user.role_id, UUID) else UUID(user.role_id) if user.role_id else None
+        if not role_id:
+            return False
+            
+        role = self.session.get(Role, role_id)
         if not role:
             return False
             
@@ -113,8 +130,12 @@ class RoleService:
         if not user.role_id:
             return False
             
-        # Get the role
-        role = self.session.get(Role, user.role_id)
+        # Get the role - ensure we're working with a proper UUID object
+        role_id = user.role_id if isinstance(user.role_id, UUID) else UUID(user.role_id) if user.role_id else None
+        if not role_id:
+            return False
+            
+        role = self.session.get(Role, role_id)
         if not role:
             return False
             
@@ -144,13 +165,17 @@ class RoleService:
         # If user is superuser, they have all permissions
         if user.is_superuser:
             return True
-            
         # If user has no role, they don't have any permissions
         if not user.role_id:
             return False
+        
+        # Get the role - ensure we're working with a proper UUID object
+        from uuid import UUID
+        role_id = user.role_id if isinstance(user.role_id, UUID) else UUID(user.role_id) if user.role_id else None
+        if not role_id:
+            return False
             
-        # Get the role
-        role = self.session.get(Role, user.role_id)
+        role = self.session.get(Role, role_id)
         if not role:
             return False
             
@@ -161,7 +186,6 @@ class RoleService:
             RolePermission.role_id == role.id,
             RolePermission.permission_id == Permission.id
         )
-        
         # Add the IN clause manually
         if permission_names:
             statement = statement.where(col(Permission.name).in_(permission_names))
@@ -188,8 +212,13 @@ class RoleService:
         if not user.role_id:
             return False
             
-        # Get the role
-        role = self.session.get(Role, user.role_id)
+        # Get the role - ensure we're working with a proper UUID object
+        from uuid import UUID
+        role_id: UUID | None = user.role_id if isinstance(user.role_id, UUID) else UUID(user.role_id) if user.role_id else None
+        if not role_id:
+            return False
+            
+        role: Role | None = self.session.get(Role, role_id)
         if not role:
             return False
             

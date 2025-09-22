@@ -56,7 +56,11 @@ class UserDomainService:
                 f"User with email '{user_data.email}' already exists"
             )
 
-        # Create user instance
+        # Get the default "User" role
+        role_statement = select(Role).where(Role.name == "User")
+        user_role = self.session.exec(role_statement).first()
+        
+        # Create user instance with default role
         user = User(
             username=user_data.username,
             email=user_data.email,
@@ -64,8 +68,8 @@ class UserDomainService:
             first_name=user_data.first_name,
             last_name=user_data.last_name,
             is_active=True,
-            role_id=
             is_superuser=False,
+            role_id=user_role.id if user_role else None,  # Assign default User role if it exists
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
