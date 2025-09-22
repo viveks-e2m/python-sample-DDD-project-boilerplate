@@ -1,14 +1,14 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
-from apps.user.application.auth_service import AuthApplicationService
-from apps.user.application.auth_schema import (
+from apps.user.application.services.auth_service import AuthApplicationService
+from apps.user.application.schema.auth_schema import (
     TwoFactorSetupRequest,
     TwoFactorVerifyRequest,
     OAuthLoginRequest,
     SessionListResponse,
     AuthResponse
 )
-from apps.user.domain.models import User
+from apps.user.domain.models.models import User
 from apps.user.interface.dependency import get_authenticated_user
 from database import SessionDep
 from typing import List

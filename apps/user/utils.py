@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException, status, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import select
-from apps.user.domain.models import User
+from apps.user.domain.models.models import User
 from database import SessionDep
 from typing import Optional
 import jwt

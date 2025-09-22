@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from sqlmodel import select
-from apps.user.domain.models import User, PasswordResetToken
-from apps.user.application.schema import UserCreateModel, UserUpdateModel, UserLoginModel
+from apps.user.domain.models.models import User, PasswordResetToken
+from apps.user.application.schema.schema import UserCreateModel, UserUpdateModel, UserLoginModel
 from apps.user.domain.exceptions import (
     UserNotFoundError, 
     UserPermissionError, 

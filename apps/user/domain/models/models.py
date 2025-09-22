@@ -1,6 +1,6 @@
 import uuid
 import hashlib
-from apps.user.application.schema import UserBase
+from apps.user.application.schema.schema import UserBase
 from sqlmodel import Field, SQLModel
 from datetime import datetime, timezone
 from typing import Optional

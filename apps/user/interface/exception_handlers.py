@@ -1,7 +1,7 @@
 from fastapi import Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from apps.user.application.schema import BaseResponse
+from apps.user.application.schema.schema import BaseResponse
 from typing import Union, Any, Dict, List, Optional
 
 

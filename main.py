@@ -2,11 +2,11 @@ from typing import AsyncGenerator
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from apps.user.interface import user_router, admin_router, auth_router
+from apps.user.interface.routers import user_router, admin_router, auth_router
 from apps.user.interface.exception_handlers import http_exception_handler, validation_exception_handler
 from contextlib import asynccontextmanager
 from database import create_db_and_tables
-from apps.user.application.schema import BaseResponse
+from apps.user.application.schema.schema import BaseResponse
 
 """
     This is the main entry point for the application.

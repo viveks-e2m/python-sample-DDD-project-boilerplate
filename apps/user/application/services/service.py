@@ -2,8 +2,8 @@ from typing import Any, Optional
 import uuid
 from fastapi import Depends, HTTPException, status
 from sqlmodel import select
-from apps.user.domain.models import User, PasswordResetToken
-from apps.user.domain.service import UserDomainService
+from apps.user.domain.models.models import User, PasswordResetToken
+from apps.user.domain.services.service import UserDomainService
 from apps.user.domain.exceptions import (
     UserNotFoundError, 
     UserPermissionError, 
@@ -11,7 +11,7 @@ from apps.user.domain.exceptions import (
     UserAuthenticationError,
     UserAlreadyExistsError
 )
-from apps.user.application.schema import (
+from apps.user.application.schema.schema import (
     UserCreateModel, 
     UserUpdateModel, 
     UserLoginModel,

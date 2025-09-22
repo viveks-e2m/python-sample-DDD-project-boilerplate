@@ -4,8 +4,8 @@ from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from sqlmodel import select
 from fastapi import HTTPException, status
-from apps.user.domain.models import User
-from apps.user.domain.auth_models import TwoFactorAuth, UserSession, OAuthAccount, TwoFactorType, OAuthProvider
+from apps.user.domain.models.models import User
+from apps.user.domain.models.auth_models import TwoFactorAuth, UserSession, OAuthAccount, TwoFactorType, OAuthProvider
 from database import SessionDep
 
 

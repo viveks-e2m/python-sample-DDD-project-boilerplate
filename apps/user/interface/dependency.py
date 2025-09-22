@@ -1,7 +1,7 @@
 from fastapi import Request,HTTPException,status
 from database import SessionDep
-from apps.user.application.service import UserApplicationService
-from apps.user.domain.models import User
+from apps.user.application.services.service import UserApplicationService
+from apps.user.domain.models.models import User
 from apps.user.utils import get_current_user_from_cookie
 
 # Dependencies

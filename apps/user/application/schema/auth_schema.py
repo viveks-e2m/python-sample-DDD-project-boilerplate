@@ -3,7 +3,7 @@ from typing import Optional, List
 from sqlmodel import SQLModel
 from pydantic import BaseModel
 from datetime import datetime
-from apps.user.domain.auth_models import TwoFactorType, OAuthProvider
+from apps.user.domain.models.auth_models import TwoFactorType, OAuthProvider
 
 
 # 2FA Setup Request/Response Models

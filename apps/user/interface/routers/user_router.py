@@ -9,7 +9,7 @@ from fastapi import (
     status,
     Response,
 )
-from apps.user.application.schema import (
+from apps.user.application.schema.schema import (
     UserCreateModel,
     UserPublicModel,
     UserUpdateModel,
@@ -18,13 +18,13 @@ from apps.user.application.schema import (
     PasswordResetConfirmModel,
     BaseResponse,
 )
-from apps.user.application.service import UserApplicationService
+from apps.user.application.services.service import UserApplicationService
 from apps.user.utils import (
     set_auth_cookie,
     clear_auth_cookie,
     create_access_token,
 )
-from apps.user.domain.models import User
+from apps.user.domain.models.models import User
 from database import SessionDep
 from typing import List, Optional
 from apps.user.interface.dependency import get_user_service, get_authenticated_user

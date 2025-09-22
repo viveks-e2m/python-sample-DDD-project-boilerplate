@@ -1,9 +1,9 @@
 import uuid
 from typing import List, Optional
 from fastapi import HTTPException, status, Depends
-from apps.user.domain.auth_service import AuthDomainService
-from apps.user.domain.auth_models import TwoFactorType, OAuthProvider, UserSession
-from apps.user.application.auth_schema import (
+from apps.user.domain.services.auth_service import AuthDomainService
+from apps.user.domain.models.auth_models import TwoFactorType, OAuthProvider, UserSession
+from apps.user.application.schema.auth_schema import (
     TwoFactorSetupRequest, 
     TwoFactorVerifyRequest, 
     OAuthLoginRequest,
