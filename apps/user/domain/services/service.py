@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from sqlmodel import select
 from apps.user.domain.models.models import User, PasswordResetToken
+from apps.user.domain.models.auth_models import Role
 from apps.user.application.schema.schema import (
     UserCreateModel,
     UserUpdateModel,
@@ -63,6 +64,7 @@ class UserDomainService:
             first_name=user_data.first_name,
             last_name=user_data.last_name,
             is_active=True,
+            role_id=
             is_superuser=False,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
@@ -452,3 +454,68 @@ class UserDomainService:
         self.session.refresh(user)
 
         return user
+
+    async def list_users_by_role(self, current_user: User):
+        """
+        Domain layer service for listing users based on the current user's permissions
+        - Users with 'list_all_users_admin' permission: Can see all users
+        - Users with 'list_all_users_role_maintainer' permission: Can see users with roles 'Maintainer' and 'User'
+        - Users with 'list_all_users_role_user' permission: Can see only users with role 'User'
+
+        Args:
+            current_user (User): The authenticated user making the request
+
+        Returns:
+            List[User]: List of users based on permissions
+        """
+        from apps.user.domain.services.role_service import RoleService
+        role_service = RoleService(self.session)
+        
+        # Superusers can see all users
+        if current_user.is_superuser:
+            statement = select(User)
+            users = self.session.exec(statement).all()
+            return users
+
+        # Build query based on permissions
+        statement = select(User)
+        
+        # Check for admin permission first
+        if role_service.user_has_permission(current_user, "list_all_users_admin"):
+            # Admin can see all users
+            users = self.session.exec(statement).all()
+            return users
+        elif role_service.user_has_permission(current_user, "list_all_users_role_maintainer"):
+            # Maintainer can see users with roles 'Maintainer' and 'User'
+            role_statement = select(Role).where(
+                (Role.name == "Maintainer") | (Role.name == "User")
+            )
+            allowed_roles = self.session.exec(role_statement).all()
+            allowed_role_ids = [role.id for role in allowed_roles]
+            
+            # Include users with no role as well (they default to User role)
+            from sqlmodel import col
+            statement = statement.where(
+                (col(User.role_id).in_(allowed_role_ids)) | (col(User.role_id).is_(None))
+            )
+            users = self.session.exec(statement).all()
+            return users
+        elif role_service.user_has_permission(current_user, "list_all_users_role_user"):
+            # Regular users can only see users with role 'User' or no role
+            role_statement = select(Role).where(Role.name == "User")
+            user_role = self.session.exec(role_statement).first()
+            
+            from sqlmodel import col
+            if user_role:
+                statement = statement.where(
+                    (col(User.role_id) == user_role.id) | (col(User.role_id).is_(None))
+                )
+            else:
+                # If 'User' role doesn't exist, only show users with no role
+                statement = statement.where(col(User.role_id).is_(None))
+                
+            users = self.session.exec(statement).all()
+            return users
+        else:
+            # User has no relevant permissions, can only see themselves
+            return [current_user]

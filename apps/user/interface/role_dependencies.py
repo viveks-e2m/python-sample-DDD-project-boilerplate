@@ -103,3 +103,32 @@ def require_all_permissions(required_permissions: list[str]):
             )
         return current_user
     return permission_checker
+
+
+def require_user_listing_permission():
+    """
+    Dependency to require appropriate user listing permission based on user's permissions
+    
+    Usage:
+    @router.get("/users")
+    def list_users(user=Depends(require_user_listing_permission())):
+        return {"message": "Access granted"}
+    """
+    def permission_checker(
+        current_user: User = Depends(get_authenticated_user),
+        role_service: RoleService = Depends(get_role_service)
+    ):
+        # Check if user has any of the required permissions for user listing
+        required_permissions = [
+            "list_all_users_admin",
+            "list_all_users_role_maintainer", 
+            "list_all_users_role_user"
+        ]
+        
+        if not role_service.user_has_any_permission(current_user, required_permissions):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. No permission to list users."
+            )
+        return current_user
+    return permission_checker

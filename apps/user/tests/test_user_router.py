@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
-from apps.user.application.schema import UserCreateModel, UserLoginModel
+from apps.user.application.schema.schema import UserCreateModel, UserLoginModel
 
 client = TestClient(app)
 
@@ -135,3 +135,30 @@ class TestUserRouter:
         data = response.json()
         assert data["success"] is True
         assert data["data"]["username"] == "testuser"
+
+    def test_list_users_by_role(self):
+        """Test listing users based on role permissions"""
+        # First register and login a user
+        user_data = {
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "Test1234",
+            "first_name": "Test",
+            "last_name": "User"
+        }
+        
+        client.post("/user/register", json=user_data)
+        
+        login_data = {
+            "email": "test@example.com",
+            "password": "Test1234"
+        }
+        
+        # Login to get the cookie
+        login_response = client.post("/user/login", json=login_data)
+        assert login_response.status_code == 200
+        
+        # Try to list users (should fail as regular user doesn't have a role with list permission)
+        response = client.get("/user/")
+        # This should return 403 Forbidden as the user doesn't have the required permission
+        assert response.status_code == 403

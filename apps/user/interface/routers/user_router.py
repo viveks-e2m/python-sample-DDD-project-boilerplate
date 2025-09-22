@@ -28,6 +28,7 @@ from apps.user.domain.models.models import User
 from database import SessionDep
 from typing import List, Optional
 from apps.user.interface.dependency import get_user_service, get_authenticated_user
+from apps.user.interface import role_dependencies
 
 router: APIRouter = APIRouter()
 
@@ -247,3 +248,47 @@ async def get_current_user_info(
         status_code=status.HTTP_200_OK,
     )
 
+
+@router.get(
+    path="/", 
+    response_model=BaseResponse[List[UserPublicModel]], 
+    tags=["User"]
+)
+async def list_users_by_role(
+    current_user: User = Depends(role_dependencies.require_user_listing_permission()),
+    service: UserApplicationService = Depends(get_user_service),
+) -> BaseResponse[List[User]]:
+    """
+    List users based on the current user's permissions.
+    
+    - Users with 'list_all_users_admin' permission: Can see all users
+    - Users with 'list_all_users_role_maintainer' permission: Can see users with roles 'Maintainer' and 'User'
+    - Users with 'list_all_users_role_user' permission: Can see only users with role 'User'
+
+    Args:
+        current_user: The authenticated user (dependency injected)
+        service: User application service (dependency injected)
+
+    Returns:
+        BaseResponse containing list of users based on permissions
+
+    Raises:
+        HTTPException: 401 - Not authenticated
+        HTTPException: 403 - Insufficient permissions
+        HTTPException: 500 - Internal server error
+    """
+    try:
+        users = await service.list_users_by_role(current_user)
+        return BaseResponse(
+            success=True,
+            data=list(users),
+            message="Users retrieved successfully",
+            status_code=status.HTTP_200_OK,
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {str(e)}",
+        )

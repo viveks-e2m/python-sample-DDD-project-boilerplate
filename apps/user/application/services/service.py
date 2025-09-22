@@ -266,3 +266,27 @@ class UserApplicationService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
+
+    async def list_users_by_role(self, current_user: User):
+        """
+        Application layer service for listing users based on the current user's permissions
+        - Users with 'list_all_users_admin' permission: Can see all users
+        - Users with 'list_all_users_role_maintainer' permission: Can see users with roles 'Maintainer' and 'User'
+        - Users with 'list_all_users_role_user' permission: Can see only users with role 'User'
+
+        Args:
+            current_user (User): The authenticated user making the request
+
+        Returns:
+            List[User]: List of users based on permissions
+
+        Raises:
+            HTTPException: 500 - Internal server error
+        """
+        try:
+            return await self.domain_service.list_users_by_role(current_user)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to list users: {str(e)}",
+            )
