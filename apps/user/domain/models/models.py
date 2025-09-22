@@ -20,6 +20,7 @@ class User(UserBase, table=True):
     last_name: str = Field(max_length=50)
     is_active: bool = Field(default=True)
     is_superuser: bool = Field(default=False)
+    role_id: Optional[uuid.UUID] = Field(default=None, foreign_key="role.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

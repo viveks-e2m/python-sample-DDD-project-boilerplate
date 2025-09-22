@@ -9,18 +9,16 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Database configuration
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/ddd_project"
-)
+# Database configuration - using SQLite instead of PostgreSQL
+DATABASE_URL = "sqlite:///./test.db"
 
 logger.info(f"Database URL: {DATABASE_URL}")
 
-# Remove SQLite-specific connect_args since we're only using PostgreSQL
-connect_args = {}
+# SQLite-specific connect_args
+connect_args = {"check_same_thread": False}
 
 # Connection to database
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=True, connect_args=connect_args)
 
 
 def create_db_and_tables():
