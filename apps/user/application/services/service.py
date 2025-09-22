@@ -2,7 +2,7 @@ from typing import Any, Optional
 import uuid
 from fastapi import Depends, HTTPException, status
 from sqlmodel import select
-from apps.user.domain.models.models import User, PasswordResetToken
+from apps.user.domain.models.models import User
 from apps.user.domain.services.service import UserDomainService
 from apps.user.domain.exceptions import (
     UserNotFoundError,
@@ -127,30 +127,6 @@ class UserApplicationService:
 
         try:
             return await self.domain_service.update_user(user_id, user_data)
-        except UserNotFoundError:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
-        except UserValidationError as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-    async def admin_update_user(self, user_id: uuid.UUID, user_data: UserUpdateModel):
-        """
-        Application layer service for admin updating a user
-
-        Args:
-            user_id (uuid.UUID): The ID of the user to update
-            user_data (UserUpdateModel): The updated data for the user
-
-        Returns:
-            User: The updated user
-
-        Raises:
-            HTTPException: 400 - Invalid input data
-            HTTPException: 404 - User not found
-        """
-        try:
-            return await self.domain_service.admin_update_user(user_id, user_data)
         except UserNotFoundError:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
