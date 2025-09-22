@@ -5,18 +5,18 @@ from sqlmodel import select
 from apps.user.domain.models.models import User, PasswordResetToken
 from apps.user.domain.services.service import UserDomainService
 from apps.user.domain.exceptions import (
-    UserNotFoundError, 
-    UserPermissionError, 
+    UserNotFoundError,
+    UserPermissionError,
     UserValidationError,
     UserAuthenticationError,
-    UserAlreadyExistsError
+    UserAlreadyExistsError,
 )
 from apps.user.application.schema.schema import (
-    UserCreateModel, 
-    UserUpdateModel, 
+    UserCreateModel,
+    UserUpdateModel,
     UserLoginModel,
     PasswordResetRequestModel,
-    PasswordResetConfirmModel
+    PasswordResetConfirmModel,
 )
 from database import SessionDep
 
@@ -47,19 +47,13 @@ class UserApplicationService:
         try:
             return await self.domain_service.create_user(user_data)
         except UserAlreadyExistsError as e:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
         except UserValidationError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create user: {str(e)}"
+                detail=f"Failed to create user: {str(e)}",
             )
 
     async def get_user(self, user_id: uuid.UUID):
@@ -102,10 +96,12 @@ class UserApplicationService:
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to list users: {str(e)}"
+                detail=f"Failed to list users: {str(e)}",
             )
 
-    async def update_user(self, user_id: uuid.UUID, current_user: User, user_data: UserUpdateModel):
+    async def update_user(
+        self, user_id: uuid.UUID, current_user: User, user_data: UserUpdateModel
+    ):
         """
         Application layer service for updating a user
 
@@ -128,7 +124,7 @@ class UserApplicationService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to update this user",
             )
-            
+
         try:
             return await self.domain_service.update_user(user_id, user_data)
         except UserNotFoundError:
@@ -136,10 +132,7 @@ class UserApplicationService:
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
         except UserValidationError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     async def admin_update_user(self, user_id: uuid.UUID, user_data: UserUpdateModel):
         """
@@ -163,10 +156,7 @@ class UserApplicationService:
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
         except UserValidationError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     async def delete_user(self, user_id: uuid.UUID):
         """
@@ -211,7 +201,7 @@ class UserApplicationService:
         except UserAuthenticationError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect username or password"
+                detail="Incorrect username or password",
             )
 
     async def request_password_reset(self, reset_data: PasswordResetRequestModel):
@@ -229,12 +219,14 @@ class UserApplicationService:
             HTTPException: 500 - Internal server error
         """
         try:
-            reset_token = await self.domain_service.create_password_reset_token(reset_data.email)
+            reset_token = await self.domain_service.create_password_reset_token(
+                reset_data.email
+            )
             # In a real application, you would send an email with the reset link here
             # For now, we'll just return the token (in a real app, this should not be exposed)
             return {
                 "message": "Password reset instructions sent to your email",
-                "token": reset_token.token  # Remove this in production, only for testing
+                "token": reset_token.token,  # Remove this in production, only for testing
             }
         except UserNotFoundError:
             # We don't reveal whether the email exists for security reasons
@@ -242,7 +234,7 @@ class UserApplicationService:
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to process password reset request: {str(e)}"
+                detail=f"Failed to process password reset request: {str(e)}",
             )
 
     async def confirm_password_reset(self, reset_data: PasswordResetConfirmModel):
@@ -266,17 +258,16 @@ class UserApplicationService:
             )
             return user
         except UserNotFoundError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to reset password: {str(e)}"
+                detail=f"Failed to reset password: {str(e)}",
             )
 
-    async def update_user_status(self, user_id: uuid.UUID, is_active: bool, is_superuser: Optional[bool] = None):
+    async def update_user_status(
+        self, user_id: uuid.UUID, is_active: bool, is_superuser: Optional[bool] = None
+    ):
         """
         Application layer service for updating a user's status
 
@@ -292,7 +283,9 @@ class UserApplicationService:
             HTTPException: 404 - User not found
         """
         try:
-            return await self.domain_service.update_user_status(user_id, is_active, is_superuser)
+            return await self.domain_service.update_user_status(
+                user_id, is_active, is_superuser
+            )
         except UserNotFoundError:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"

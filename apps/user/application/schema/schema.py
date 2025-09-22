@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 T = TypeVar("T")
 
+
 # -------------------------
 # Generic API Response
 # -------------------------
@@ -28,7 +29,9 @@ class UsernameValidatorMixin:
         if not v or not v.strip():
             raise ValueError("Username cannot be empty or whitespace only")
         if not v.replace("_", "").isalnum():
-            raise ValueError("Username can only contain alphanumeric characters and underscores")
+            raise ValueError(
+                "Username can only contain alphanumeric characters and underscores"
+            )
         return v.strip().lower()
 
 
@@ -102,7 +105,7 @@ class PasswordResetRequestModel(SQLModel):
 class PasswordResetConfirmModel(SQLModel):
     token: str
     new_password: str = Field(min_length=8)
-    
+
     @field_validator("new_password")
     @classmethod
     def validate_new_password(cls, v: str) -> str:

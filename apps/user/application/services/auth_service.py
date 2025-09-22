@@ -2,12 +2,16 @@ import uuid
 from typing import List, Optional
 from fastapi import HTTPException, status, Depends
 from apps.user.domain.services.auth_service import AuthDomainService
-from apps.user.domain.models.auth_models import TwoFactorType, OAuthProvider, UserSession
+from apps.user.domain.models.auth_models import (
+    TwoFactorType,
+    OAuthProvider,
+    UserSession,
+)
 from apps.user.application.schema.auth_schema import (
-    TwoFactorSetupRequest, 
-    TwoFactorVerifyRequest, 
+    TwoFactorSetupRequest,
+    TwoFactorVerifyRequest,
     OAuthLoginRequest,
-    UserSessionModel
+    UserSessionModel,
 )
 from database import SessionDep
 
@@ -21,7 +25,9 @@ class AuthApplicationService:
         self.session = session
         self.domain_service = AuthDomainService(session)
 
-    async def setup_two_factor_auth(self, user_id: uuid.UUID, setup_request: TwoFactorSetupRequest):
+    async def setup_two_factor_auth(
+        self, user_id: uuid.UUID, setup_request: TwoFactorSetupRequest
+    ):
         """
         Application service for setting up two-factor authentication
 
@@ -46,10 +52,12 @@ class AuthApplicationService:
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to setup 2FA: {str(e)}"
+                detail=f"Failed to setup 2FA: {str(e)}",
             )
 
-    async def verify_two_factor_auth(self, user_id: uuid.UUID, verify_request: TwoFactorVerifyRequest) -> bool:
+    async def verify_two_factor_auth(
+        self, user_id: uuid.UUID, verify_request: TwoFactorVerifyRequest
+    ) -> bool:
         """
         Application service for verifying two-factor authentication
 
@@ -74,7 +82,7 @@ class AuthApplicationService:
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to verify 2FA: {str(e)}"
+                detail=f"Failed to verify 2FA: {str(e)}",
             )
 
     async def get_user_sessions(self, user_id: uuid.UUID) -> List[UserSessionModel]:
@@ -99,14 +107,14 @@ class AuthApplicationService:
                     user_agent=session.user_agent,
                     created_at=session.created_at,
                     expires_at=session.expires_at,
-                    is_active=session.is_active
+                    is_active=session.is_active,
                 )
                 for session in sessions
             ]
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to retrieve sessions: {str(e)}"
+                detail=f"Failed to retrieve sessions: {str(e)}",
             )
 
     async def revoke_session(self, session_id: uuid.UUID, user_id: uuid.UUID) -> bool:
@@ -131,7 +139,7 @@ class AuthApplicationService:
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to revoke session: {str(e)}"
+                detail=f"Failed to revoke session: {str(e)}",
             )
 
     async def revoke_all_sessions(self, user_id: uuid.UUID) -> int:
@@ -152,10 +160,12 @@ class AuthApplicationService:
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to revoke all sessions: {str(e)}"
+                detail=f"Failed to revoke all sessions: {str(e)}",
             )
 
-    async def impersonate_user(self, admin_user_id: uuid.UUID, target_user_id: uuid.UUID):
+    async def impersonate_user(
+        self, admin_user_id: uuid.UUID, target_user_id: uuid.UUID
+    ):
         """
         Application service for impersonating a user
 
@@ -172,13 +182,15 @@ class AuthApplicationService:
             HTTPException: 500 - Internal server error
         """
         try:
-            return await self.domain_service.impersonate_user(admin_user_id, target_user_id)
+            return await self.domain_service.impersonate_user(
+                admin_user_id, target_user_id
+            )
         except HTTPException:
             raise
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to impersonate user: {str(e)}"
+                detail=f"Failed to impersonate user: {str(e)}",
             )
 
     async def handle_oauth_login(self, provider: str, oauth_request: OAuthLoginRequest):
@@ -203,9 +215,9 @@ class AuthApplicationService:
             except ValueError:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid OAuth provider: {provider}"
+                    detail=f"Invalid OAuth provider: {provider}",
                 )
-            
+
             return await self.domain_service.handle_oauth_login(
                 provider_enum, oauth_request.code, oauth_request.redirect_uri
             )
@@ -214,5 +226,5 @@ class AuthApplicationService:
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to handle OAuth login: {str(e)}"
+                detail=f"Failed to handle OAuth login: {str(e)}",
             )

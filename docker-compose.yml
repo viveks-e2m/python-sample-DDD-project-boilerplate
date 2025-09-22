@@ -1,47 +1,42 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
   db:
     image: postgres:15
-    container_name: blogpost_db
-    env_file:
-      - .env
+    container_name: ddd_postgres
+    restart: always
     environment:
-      POSTGRES_DB: ${DATABASE_NAME}
-      POSTGRES_USER: ${DATABASE_USER}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      POSTGRES_DB: ${DATABASE_NAME:-ddd_project}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
     networks:
-      - blogpost_network
+      - ddd_network
 
+  # FastAPI Application
   app:
     build: .
-    container_name: blogpost_app
-    env_file:
-      - .env
-    environment:
-      - DATABASE_HOST=db
-      - DATABASE_PORT=5432
-      - DATABASE_NAME=${DATABASE_NAME}
-      - DATABASE_USER=${DATABASE_USER}
-      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
-      - DATABASE_URL=postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@db:5432/${DATABASE_NAME}
-      - ENVIRONMENT=production
+    container_name: ddd_fastapi
+    restart: always
     ports:
       - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://${DATABASE_USER:-postgres}:${DATABASE_PASSWORD:-postgres}@db:5432/${DATABASE_NAME:-ddd_project}
     depends_on:
       - db
-    networks:
-      - blogpost_network
     volumes:
       - .:/app
+    networks:
+      - ddd_network
 
 volumes:
   postgres_data:
 
 networks:
-  blogpost_network:
+  ddd_network:
     driver: bridge

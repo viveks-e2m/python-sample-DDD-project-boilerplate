@@ -5,7 +5,13 @@ from datetime import datetime, timedelta, timezone
 from sqlmodel import select
 from fastapi import HTTPException, status
 from apps.user.domain.models.models import User
-from apps.user.domain.models.auth_models import TwoFactorAuth, UserSession, OAuthAccount, TwoFactorType, OAuthProvider
+from apps.user.domain.models.auth_models import (
+    TwoFactorAuth,
+    UserSession,
+    OAuthAccount,
+    TwoFactorType,
+    OAuthProvider,
+)
 from database import SessionDep
 
 
@@ -17,7 +23,9 @@ class AuthDomainService:
     def __init__(self, session: SessionDep):
         self.session = session
 
-    async def setup_two_factor_auth(self, user_id: uuid.UUID, type: TwoFactorType) -> dict:
+    async def setup_two_factor_auth(
+        self, user_id: uuid.UUID, type: TwoFactorType
+    ) -> dict:
         """
         Setup two-factor authentication for a user
 
@@ -32,14 +40,12 @@ class AuthDomainService:
         user = self.session.get(User, user_id)
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
 
         # Check if 2FA already exists for this user and type
         statement = select(TwoFactorAuth).where(
-            TwoFactorAuth.user_id == user_id,
-            TwoFactorAuth.type == type
+            TwoFactorAuth.user_id == user_id, TwoFactorAuth.type == type
         )
         result = self.session.exec(statement)
         existing_2fa = result.first()
@@ -48,7 +54,7 @@ class AuthDomainService:
         if existing_2fa and existing_2fa.is_enabled:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"{type.value} 2FA is already enabled for this user"
+                detail=f"{type.value} 2FA is already enabled for this user",
             )
 
         response_data: dict = {}
@@ -60,7 +66,7 @@ class AuthDomainService:
         if type == TwoFactorType.TOTP:
             # Generate secret for TOTP (simplified)
             secret = secrets.token_urlsafe(32)
-            
+
             # Create or update 2FA record
             if existing_2fa:
                 existing_2fa.secret = secret
@@ -68,24 +74,21 @@ class AuthDomainService:
                 self.session.add(existing_2fa)
             else:
                 new_2fa = TwoFactorAuth(
-                    user_id=user_id,
-                    type=type,
-                    secret=secret,
-                    is_enabled=False
+                    user_id=user_id, type=type, secret=secret, is_enabled=False
                 )
                 self.session.add(new_2fa)
-            
+
             # In a real implementation with pyotp:
             # totp = pyotp.totp.TOTP(secret)
             # qr_code_url = totp.provisioning_uri(
             #     name=user.email,
             #     issuer_name="YourAppName"
             # )
-            
+
             qr_code_url = f"https://example.com/qr?secret={secret}"  # Mock QR code URL
             response_data["qr_code_url"] = qr_code_url
             response_data["secret"] = secret
-            
+
         elif type == TwoFactorType.SMS:
             # For SMS, we would need to collect phone number
             # This is a simplified implementation
@@ -98,32 +101,30 @@ class AuthDomainService:
                     user_id=user_id,
                     type=type,
                     phone_number=None,  # Will be set during verification
-                    is_enabled=False
+                    is_enabled=False,
                 )
                 self.session.add(new_2fa)
-                
+
         elif type == TwoFactorType.EMAIL:
             # For email 2FA, we'll use the user's email
             if existing_2fa:
                 existing_2fa.is_enabled = False  # Not enabled until verified
                 self.session.add(existing_2fa)
             else:
-                new_2fa = TwoFactorAuth(
-                    user_id=user_id,
-                    type=type,
-                    is_enabled=False
-                )
+                new_2fa = TwoFactorAuth(user_id=user_id, type=type, is_enabled=False)
                 self.session.add(new_2fa)
 
         self.session.commit()
-        
+
         # Generate recovery codes
         recovery_codes: List[str] = [secrets.token_urlsafe(16) for _ in range(10)]
         response_data["recovery_codes"] = recovery_codes
-        
+
         return response_data
 
-    async def verify_two_factor_auth(self, user_id: uuid.UUID, code: str, type: TwoFactorType) -> bool:
+    async def verify_two_factor_auth(
+        self, user_id: uuid.UUID, code: str, type: TwoFactorType
+    ) -> bool:
         """
         Verify 2FA code during setup or login
 
@@ -137,8 +138,7 @@ class AuthDomainService:
         """
         # Get 2FA record
         statement = select(TwoFactorAuth).where(
-            TwoFactorAuth.user_id == user_id,
-            TwoFactorAuth.type == type
+            TwoFactorAuth.user_id == user_id, TwoFactorAuth.type == type
         )
         result = self.session.exec(statement)
         two_factor_auth = result.first()
@@ -146,7 +146,7 @@ class AuthDomainService:
         if not two_factor_auth:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"{type.value} 2FA not set up for this user"
+                detail=f"{type.value} 2FA not set up for this user",
             )
 
         is_valid = False
@@ -164,10 +164,14 @@ class AuthDomainService:
 
         return is_valid
 
-    async def create_user_session(self, user_id: uuid.UUID, session_token: str, 
-                                  ip_address: Optional[str] = None, 
-                                  user_agent: Optional[str] = None,
-                                  expires_in_hours: int = 24) -> UserSession:
+    async def create_user_session(
+        self,
+        user_id: uuid.UUID,
+        session_token: str,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        expires_in_hours: int = 24,
+    ) -> UserSession:
         """
         Create a new user session
 
@@ -182,19 +186,19 @@ class AuthDomainService:
             The created UserSession object
         """
         expires_at = datetime.now(timezone.utc) + timedelta(hours=expires_in_hours)
-        
+
         session = UserSession(
             user_id=user_id,
             session_token=session_token,
             ip_address=ip_address,
             user_agent=user_agent,
-            expires_at=expires_at
+            expires_at=expires_at,
         )
-        
+
         self.session.add(session)
         self.session.commit()
         self.session.refresh(session)
-        
+
         return session
 
     async def get_active_sessions(self, user_id: uuid.UUID) -> List[UserSession]:
@@ -210,7 +214,7 @@ class AuthDomainService:
         statement = select(UserSession).where(
             UserSession.user_id == user_id,
             UserSession.is_active == True,
-            UserSession.expires_at > datetime.now(timezone.utc)
+            UserSession.expires_at > datetime.now(timezone.utc),
         )
         result = self.session.exec(statement)
         return list(result.all())
@@ -227,22 +231,20 @@ class AuthDomainService:
             Boolean indicating if session was revoked
         """
         statement = select(UserSession).where(
-            UserSession.id == session_id,
-            UserSession.user_id == user_id
+            UserSession.id == session_id, UserSession.user_id == user_id
         )
         result = self.session.exec(statement)
         session = result.first()
 
         if not session:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Session not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
             )
 
         session.is_active = False
         self.session.add(session)
         self.session.commit()
-        
+
         return True
 
     async def revoke_all_sessions(self, user_id: uuid.UUID) -> int:
@@ -256,8 +258,7 @@ class AuthDomainService:
             Number of sessions revoked
         """
         statement = select(UserSession).where(
-            UserSession.user_id == user_id,
-            UserSession.is_active == True
+            UserSession.user_id == user_id, UserSession.is_active == True
         )
         result = self.session.exec(statement)
         sessions = result.all()
@@ -270,10 +271,12 @@ class AuthDomainService:
 
         if count > 0:
             self.session.commit()
-            
+
         return count
 
-    async def impersonate_user(self, admin_user_id: uuid.UUID, target_user_id: uuid.UUID) -> dict:
+    async def impersonate_user(
+        self, admin_user_id: uuid.UUID, target_user_id: uuid.UUID
+    ) -> dict:
         """
         Allow admin to impersonate another user
 
@@ -289,29 +292,30 @@ class AuthDomainService:
         if not admin_user or not admin_user.is_superuser:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only superusers can impersonate other users"
+                detail="Only superusers can impersonate other users",
             )
 
         # Check if target user exists
         target_user = self.session.get(User, target_user_id)
         if not target_user:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Target user not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Target user not found"
             )
 
         # Create impersonation token/session
         # In a real implementation, you would create a special token
         # that allows switching back to the admin user
         impersonation_token = secrets.token_urlsafe(32)
-        
+
         return {
             "impersonation_token": impersonation_token,
             "target_user_id": target_user_id,
-            "message": "Impersonation started successfully"
+            "message": "Impersonation started successfully",
         }
 
-    async def handle_oauth_login(self, provider: OAuthProvider, code: str, redirect_uri: str) -> dict:
+    async def handle_oauth_login(
+        self, provider: OAuthProvider, code: str, redirect_uri: str
+    ) -> dict:
         """
         Handle OAuth login with external providers
 
@@ -329,11 +333,11 @@ class AuthDomainService:
         # 2. Get user information from the provider
         # 3. Create or update user account
         # 4. Create session for the user
-        
+
         # For demonstration, we'll return a mock response
         return {
             "provider": provider.value,
             "access_token": secrets.token_urlsafe(32),
             "user_id": str(uuid.uuid4()),
-            "message": f"OAuth login with {provider.value} successful"
+            "message": f"OAuth login with {provider.value} successful",
         }

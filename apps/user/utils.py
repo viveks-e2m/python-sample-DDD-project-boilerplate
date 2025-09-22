@@ -17,11 +17,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """
     Create a JWT access token
-    
+
     Args:
         data (dict): Data to encode in the token
         expires_delta (timedelta, optional): Token expiration time
-        
+
     Returns:
         str: Encoded JWT token
     """
@@ -34,10 +34,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
 def set_auth_cookie(response: Response, token: str):
     """
     Set the authentication cookie
-    
+
     Args:
         response (Response): FastAPI response object
         token (str): JWT token to store in cookie
@@ -48,33 +49,37 @@ def set_auth_cookie(response: Response, token: str):
         httponly=True,
         secure=False,  # Set to True in production with HTTPS
         samesite="lax",
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
+
 
 def clear_auth_cookie(response: Response):
     """
     Clear the authentication cookie
-    
+
     Args:
         response (Response): FastAPI response object
     """
     response.delete_cookie("access_token")
 
-async def get_current_user_from_cookie(request: Request, session: SessionDep) -> Optional[User]:
+
+async def get_current_user_from_cookie(
+    request: Request, session: SessionDep
+) -> Optional[User]:
     """
     Get the current authenticated user from the cookie
-    
+
     Args:
         request (Request): FastAPI request object
         session (SessionDep): Database session dependency
-        
+
     Returns:
         User or None: The authenticated user or None if not authenticated
     """
     token = request.cookies.get("access_token")
     if not token:
         return None
-        
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         print(payload)
@@ -83,9 +88,9 @@ async def get_current_user_from_cookie(request: Request, session: SessionDep) ->
             return None
     except jwt.PyJWTError:
         return None
-    
+
     # Retrieve user from database
     statement = select(User).where(User.username == username, User.is_active == True)
     user = session.exec(statement).first()
-    
+
     return user

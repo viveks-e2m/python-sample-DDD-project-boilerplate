@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 
-
 ###################################
 ##### User Database Models ########
 ###################################
@@ -23,11 +22,11 @@ class User(UserBase, table=True):
     is_superuser: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    
+
     def set_password(self, password: str):
         """Hash and set the user's password"""
         self.password = hashlib.sha256(password.encode()).hexdigest()
-    
+
     def check_password(self, password: str) -> bool:
         """Check if the provided password matches the hashed password"""
         return self.password == hashlib.sha256(password.encode()).hexdigest()
